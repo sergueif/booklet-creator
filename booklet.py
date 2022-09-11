@@ -25,30 +25,78 @@ def main(fname):
 
     orig = Reader(open(fname, 'rb'))
     origpages = orig.pages
+    nop = len(origpages)
+
+    # padding
+    pages_mod_4 = nop % 4
+    if pages_mod_4 > 0:
+        pages_to_add = (4 - pages_mod_4) % 4
+        pad_file = Writer()
+        i = 0
+        while i < nop:
+            pad_file.addPage(origpages[i])
+            i += 1
+
+        pad = 0
+        while pad < pages_to_add:
+            pad_file.addBlankPage(origpages[0].mediabox.getWidth(), origpages[0].mediabox.getHeight())
+            pad += 1
+
+
+        padded_file = os.path.join(os.path.dirname(fname),
+                          os.path.basename(fname) + ".padded.pdf")
+        with open(padded_file, 'wb') as f:
+            pad_file.write(f)
+
+        orig = Reader(open(padded_file, 'rb'))
+        origpages = orig.pages
+        nop = len(origpages)
+
     new = Writer()
 
-    nop = len(origpages)
-    nop_booklet = int(math.ceil(nop / 4.0)) # = 11
+    # main thing
+    new.addPage(origpages[nop - 1]) # add last page
+    pages_moved = 1
 
-    base = np.arange(nop_booklet) + 1
-    base = 2 * base
-    base = base[::-1]
-    pages = []
-    for i in base:
-        num = nop_booklet * 4 + 1 # = 45
-        pages.append(i)
-        pages.append(num - i)
-        pages.append(num - i + 1)
-        pages.append(num - (num - i + 1))
+    index_up = 0
+    index_down = (nop - 1) - 1
 
-    for i in pages:
-        if i > nop:
-            new.addBlankPage()
+    step = 0
+    while pages_moved < nop:
+        if step == 0 or step == 1:
+            new.addPage(origpages[index_up])
+            index_up += 1
+        elif step == 2 or step == 3:
+            new.addPage(origpages[index_down])
+            index_down -= 1
         else:
-            idx = int(i - 1)
-            new.addPage(origpages[idx])
+            print("whoa xxxxxxxxx")
 
-    # save the modified pdf file
+        step = (step + 1) % 4
+        pages_moved += 1
+
+#    nop_booklet = int(math.ceil(nop / 4.0)) # = 11
+#
+#    base = np.arange(nop_booklet) + 1
+#    base = 2 * base
+#    base = base[::-1]
+#    pages = []
+#    for i in base:
+#        num = nop_booklet * 4 + 1 # = 45
+#        pages.append(i)
+#        pages.append(num - i)
+#        pages.append(num - i + 1)
+#        pages.append(num - (num - i + 1))
+#
+#    for i in pages:
+#        if i > nop:
+#            # new.addBlankPage(origpages[0].mediabox.getWidth(), origpages[0].mediabox.getHeight())
+#            new.addBlankPage()
+#        else:
+#            idx = int(i - 1)
+#            new.addPage(origpages[idx])
+#
+#    # save the modified pdf file
     fn = os.path.join(os.path.dirname(fname),
                       os.path.basename(fname) + ".booklet.pdf")
     with open(fn, 'wb') as f:
